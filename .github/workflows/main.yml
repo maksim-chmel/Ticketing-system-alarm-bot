@@ -1,0 +1,27 @@
+name: Self-hosted Deploy AlarmBot
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Pull latest AlarmBot code and restart containers
+        run: |
+          cd ~/alarm_bot
+
+          echo "🔄 Pulling latest code..."
+          git pull origin main
+
+          echo "🧼 Removing old container if exists..."
+          docker rm -f alarm-bot || true
+
+          echo "🛑 Stopping containers..."
+          docker compose down
+
+          echo "🚀 Starting containers with rebuild..."
+          docker compose up -d --build
