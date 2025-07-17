@@ -10,15 +10,11 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Pull latest AlarmBot code and restart containers
+      - name: Pull latest AlarmBot code
         run: |
           cd ~/alarm_bot
           echo "🔄 Pulling latest code..."
           git pull origin main
-          echo "🧼 Removing old container if exists..."
-          docker rm -f alarm-bot || true
-          echo "🛑 Stopping containers..."
-          docker compose down
 
       - name: Create .env file from GitHub Secrets
         run: |
@@ -28,7 +24,15 @@ jobs:
           echo "THREAD_ID=${{ secrets.THREAD_ID }}" >> .env
           echo "BOT_TOKEN=${{ secrets.BOT_TOKEN }}" >> .env
 
-      - name: Start containers with rebuild
+      - name: Stop containers and remove old container if exists
+        run: |
+          cd ~/alarm_bot
+          echo "🧼 Removing old container if exists..."
+          docker rm -f alarm-bot || true
+          echo "🛑 Stopping containers..."
+          docker compose down || true
+
+      - name: Build and start containers
         run: |
           cd ~/alarm_bot
           echo "🚀 Starting containers with rebuild..."
