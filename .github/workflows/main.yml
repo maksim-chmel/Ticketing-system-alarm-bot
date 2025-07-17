@@ -23,5 +23,13 @@ jobs:
           echo "🛑 Stopping containers..."
           docker compose down
 
+          echo "📝 Creating .env file from GitHub Secrets..."
+          cat > .env <<EOF
+DB_CONNECTION_STRING=${{ secrets.DB_CONNECTION_STRING }}
+OPERATOR_CHAT_ID=${{ secrets.OPERATOR_CHAT_ID }}
+THREAD_ID=${{ secrets.THREAD_ID }}
+BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+EOF
+
           echo "🚀 Starting containers with rebuild..."
           docker compose up -d --build
