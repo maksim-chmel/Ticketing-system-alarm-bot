@@ -10,4 +10,4 @@ const bot = new Telegraf(process.env.BOT_TOKEN!);
 bot.start(ctx => ctx.reply('Сервис онлайн.'));
 monitorNewFeedbacks(bot);
 
-bot.launch().then(() => console.log('Бот запущено'));
+bot.launch().then(() => console.log('Бот запущен'));
