@@ -13,23 +13,23 @@ jobs:
       - name: Pull latest AlarmBot code and restart containers
         run: |
           cd ~/alarm_bot
-
           echo "🔄 Pulling latest code..."
           git pull origin main
-
           echo "🧼 Removing old container if exists..."
           docker rm -f alarm-bot || true
-
           echo "🛑 Stopping containers..."
           docker compose down
 
-          echo "📝 Creating .env file from GitHub Secrets..."
-          cat > .env <<EOF
-DB_CONNECTION_STRING=${{ secrets.DB_CONNECTION_STRING }}
-OPERATOR_CHAT_ID=${{ secrets.OPERATOR_CHAT_ID }}
-THREAD_ID=${{ secrets.THREAD_ID }}
-BOT_TOKEN=${{ secrets.BOT_TOKEN }}
-EOF
+      - name: Create .env file from GitHub Secrets
+        run: |
+          cd ~/alarm_bot
+          echo "DB_CONNECTION_STRING=${{ secrets.DB_CONNECTION_STRING }}" > .env
+          echo "OPERATOR_CHAT_ID=${{ secrets.OPERATOR_CHAT_ID }}" >> .env
+          echo "THREAD_ID=${{ secrets.THREAD_ID }}" >> .env
+          echo "BOT_TOKEN=${{ secrets.BOT_TOKEN }}" >> .env
 
+      - name: Start containers with rebuild
+        run: |
+          cd ~/alarm_bot
           echo "🚀 Starting containers with rebuild..."
           docker compose up -d --build
