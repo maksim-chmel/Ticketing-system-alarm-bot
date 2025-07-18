@@ -1,6 +1,30 @@
 import { Telegraf } from 'telegraf';
 import { pool } from './db';
 
+// Функция для экранирования MarkdownV2
+function escapeMarkdownV2(text: string): string {
+    if (!text) return '';
+    return text
+        .replace(/_/g, '\\_')
+        .replace(/\*/g, '\\*')
+        .replace(/\[/g, '\\[')
+        .replace(/\]/g, '\\]')
+        .replace(/\(/g, '\\(')
+        .replace(/\)/g, '\\)')
+        .replace(/~/g, '\\~')
+        .replace(/`/g, '\\`')
+        .replace(/>/g, '\\>')
+        .replace(/#/g, '\\#')
+        .replace(/\+/g, '\\+')
+        .replace(/-/g, '\\-')
+        .replace(/=/g, '\\=')
+        .replace(/\|/g, '\\|')
+        .replace(/\{/g, '\\{')
+        .replace(/\}/g, '\\}')
+        .replace(/\./g, '\\.')
+        .replace(/!/g, '\\!');
+}
+
 async function ensureSentFeedbacksTableExists() {
     await pool.query(`
         CREATE TABLE IF NOT EXISTS "SentFeedbacks" (
@@ -31,21 +55,26 @@ export async function monitorNewFeedbacks(bot: Telegraf) {
                 const { Id, Phone, Username, Comment, CreatedDate } = row;
 
                 const msg = `🆕 Заявка ID: *${Id}*
-📱 Телефон: \`${Phone}\`
-👤 Telegram: @${Username || 'N/A'}
-🕒 ${new Date(CreatedDate).toLocaleString()}
-💬 ${Comment}`;
+📱 Телефон: \`${escapeMarkdownV2(Phone)}\`
+👤 Telegram: @${escapeMarkdownV2(Username || 'N_A')}
+🕒 ${escapeMarkdownV2(new Date(CreatedDate).toLocaleString())}
+💬 ${escapeMarkdownV2(Comment)}`;
 
-                await bot.telegram.sendMessage(Number(process.env.OPERATOR_CHAT_ID), msg, {
-                    parse_mode: 'Markdown',
-                    message_thread_id: process.env.THREAD_ID ? Number(process.env.THREAD_ID) : undefined
-                });
+                await bot.telegram.sendMessage(
+                    Number(process.env.OPERATOR_CHAT_ID),
+                    msg,
+                    {
+                        parse_mode: 'MarkdownV2',
+                        message_thread_id: process.env.THREAD_ID ? Number(process.env.THREAD_ID) : undefined
+                    }
+                );
 
-                await pool.query(`
-                    INSERT INTO "SentFeedbacks" ("FeedbackId")
-                    VALUES ($1)
-                    ON CONFLICT ("FeedbackId") DO NOTHING;
-                `, [Id]);
+                await pool.query(
+                    `INSERT INTO "SentFeedbacks" ("FeedbackId")
+                     VALUES ($1)
+                     ON CONFLICT ("FeedbackId") DO NOTHING;`,
+                    [Id]
+                );
             }
 
         } catch (err) {
