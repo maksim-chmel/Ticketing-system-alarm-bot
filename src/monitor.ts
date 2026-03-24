@@ -1,7 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { pool } from './db';
 
-// Функция для экранирования MarkdownV2
+
 function escapeMarkdownV2(text: string): string {
     if (!text) return '';
     return text
