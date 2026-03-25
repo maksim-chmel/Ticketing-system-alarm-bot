@@ -25,6 +25,15 @@ monitorNewFeedbacks(bot)
 
 bot.launch().then(() => console.log('✅ Ready to work'));
 
+bot.command('id', (ctx) => {
+    const chatId = ctx.chat.id;
+    const userId = ctx.from?.id;
+    const threadId = ctx.message?.message_thread_id;
 
+    ctx.reply(
+        `Chat ID: ${chatId}\nUser ID: ${userId}` +
+        (threadId ? `\nThread ID: ${threadId}` : '')
+    );
+});
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));

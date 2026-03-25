@@ -12,9 +12,9 @@ export const pool = new Pool({
 });
 
 pool.on('connect', () => {
-    console.log('🐘 Подключено к PostgreSQL (сервис db)');
+    console.log('DB Connected!');
 });
 
 pool.on('error', (err) => {
-    console.error('❌ Ошибка пула Postgres:', err);
+    console.error('DB error', err);
 });
