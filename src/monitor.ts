@@ -1,92 +1,47 @@
 import { Telegraf } from 'telegraf';
-import { pool } from './db';
+import axios from 'axios';
 
-
-function escapeMarkdownV2(text: string): string {
-    if (!text) return '';
-    return text
-        .replace(/_/g, '\\_')
-        .replace(/\*/g, '\\*')
-        .replace(/\[/g, '\\[')
-        .replace(/\]/g, '\\]')
-        .replace(/\(/g, '\\(')
-        .replace(/\)/g, '\\)')
-        .replace(/~/g, '\\~')
-        .replace(/`/g, '\\`')
-        .replace(/>/g, '\\>')
-        .replace(/#/g, '\\#')
-        .replace(/\+/g, '\\+')
-        .replace(/-/g, '\\-')
-        .replace(/=/g, '\\=')
-        .replace(/\|/g, '\\|')
-        .replace(/\{/g, '\\{')
-        .replace(/\}/g, '\\}')
-        .replace(/\./g, '\\.')
-        .replace(/!/g, '\\!');
-}
-
-
-async function ensureSentFeedbacksTableExists() {
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS "SentFeedbacks" (
-                                                       "Id" SERIAL PRIMARY KEY,
-                                                       "FeedbackId" INTEGER NOT NULL UNIQUE,
-                                                       "SentAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    `);
-}
-
+const API_BASE = 'http://adminpanel-back:8080/api/BotFeedback';
 
 export async function monitorNewFeedbacks(bot: Telegraf) {
-    console.log('✅ Monitoring started');
+    console.log('✅ API Monitoring started');
 
-   
-    await ensureSentFeedbacksTableExists();
-
-    
     setInterval(async () => {
         try {
-            const res = await pool.query(`
-                SELECT f."Id", u."Phone", u."Username", f."Comment", f."CreatedDate"
-                FROM "Feedbacks" f
-                         JOIN "Users" u ON f."UserId" = u."UserId"
-                         LEFT JOIN "SentFeedbacks" s ON f."Id" = s."FeedbackId"
-                WHERE s."FeedbackId" IS NULL
-                ORDER BY f."Id" ASC;
-            `);
+            const response = await axios.get(`${API_BASE}/unnotified-feedbacks`);
+            const feedbacks = response.data;
 
-            
-            for (const row of res.rows) {
-                const { Id, Phone, Username, Comment, CreatedDate } = row;
+            if (!feedbacks || feedbacks.length === 0) return;
 
-              
-                const msg = `🆕 Request ID: *${Id}*
-📱 Phone: \`${escapeMarkdownV2(Phone)}\`
-👤 Telegram: @${escapeMarkdownV2(Username || 'N_A')}
-🕒 ${escapeMarkdownV2(new Date(CreatedDate).toLocaleString())}
-💬 ${escapeMarkdownV2(Comment)}`;
+            for (const fb of feedbacks) {
+                // Преобразуем дату из строки в объект Date и форматируем
+                const feedbackTime = fb.date ? new Date(fb.date).toLocaleString('en-GB', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    day: '2-digit',
+                    month: 'short'
+                }) : 'Just now';
 
-                
+                // Формируем сообщение на английском
+                const msg = `🆕 *New Feedback #${fb.id}*\n` +
+                    `📅 Time: \`${feedbackTime}\`\n` +
+                    `📱 Phone: \`${fb.phone || 'N/A'}\`\n` +
+                    `👤 User: @${fb.username || 'unknown'}\n` +
+                    `💬 Comment: ${fb.comment}`;
+
                 await bot.telegram.sendMessage(
                     Number(process.env.OPERATOR_CHAT_ID),
                     msg,
                     {
-                        parse_mode: 'MarkdownV2',
+                        parse_mode: 'Markdown',
                         message_thread_id: process.env.THREAD_ID ? Number(process.env.THREAD_ID) : undefined
                     }
                 );
 
-               
-                await pool.query(
-                    `INSERT INTO "SentFeedbacks" ("FeedbackId")
-                     VALUES ($1)
-                         ON CONFLICT ("FeedbackId") DO NOTHING;`,
-                    [Id]
-                );
+                console.log(`[Alarm] Notification for feedback #${fb.id} sent to operator.`);
             }
-
-        } catch (err) {
-            console.error('[Monitor] ❌ Error:', err);
+        } catch (err: any) {
+            console.error('[Monitor API] ❌ Error:', err.message);
         }
     }, 15000);
 }
