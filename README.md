@@ -1,6 +1,6 @@
 # Ticketing-system-alarm-bot
 
-Telegram bot that monitors the database for new support tickets and notifies operators in real time. Part of a four-component platform — see [System Overview](#system-overview) below.
+Telegram bot that polls the backend API for new support tickets and notifies operators in real time. Part of a four-component platform; see [System Overview](#system-overview) below.
 
 ---
 
@@ -19,7 +19,7 @@ This project is one of four components that form a complete ticketing platform:
 User (Telegram)
      │ creates ticket via feedback_bot
      ▼
-PostgreSQL
+REST API
      │
      └── alarm_bot (this repo) polls every 15s
               │ new ticket found
@@ -32,17 +32,12 @@ PostgreSQL
 
 ## How It Works
 
-Every 15 seconds the bot queries the database for tickets that have not yet been sent to the operator group. For each new ticket it sends a formatted message and records the ticket ID in a `SentFeedbacks` table to prevent duplicate notifications.
+Every 15 seconds the bot queries the backend API for tickets that have not yet been notified to the operator group. For each new ticket it sends a formatted message to the configured Telegram chat or topic.
 
 ```
-SELECT feedbacks not in SentFeedbacks
+GET /api/BotFeedback/unnotified-feedbacks
   → send to operator chat
-  → insert into SentFeedbacks
 ```
-
-The `SentFeedbacks` table is created automatically on first startup.
-
----
 
 ## Notification Format
 
@@ -62,7 +57,7 @@ The `SentFeedbacks` table is created automatically on first startup.
 |---|---|
 | Runtime | Node.js + TypeScript |
 | Telegram | Telegraf |
-| Database | PostgreSQL (via `pg`) |
+| HTTP client | Axios |
 | Containerization | Docker / Docker Compose |
 
 ---
@@ -72,8 +67,8 @@ The `SentFeedbacks` table is created automatically on first startup.
 ```
 src/
 ├── index.ts      # Bot setup and entry point
-├── monitor.ts    # Polling loop and notification logic
-└── db.ts         # PostgreSQL connection pool
+├── config.ts     # Environment parsing and defaults
+└── monitor.ts    # Polling loop and notification logic
 ```
 
 ---
@@ -83,7 +78,7 @@ src/
 ### Prerequisites
 
 - Node.js 18+
-- PostgreSQL with the shared schema (see [ticketing-system-server](https://github.com/maksim-chmel/Ticketing-system-server))
+- Running backend API reachable from this bot
 - Telegram bot token and operator group/thread ID
 
 ### Environment Variables
@@ -91,19 +86,20 @@ src/
 Create a `.env` file:
 
 ```env
-BOT_TOKEN=your_telegram_bot_token
-DB_CONNECTION_STRING=postgresql://postgres:yourpassword@localhost:5432/feedbackdb
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 OPERATOR_CHAT_ID=-1001234567890
 THREAD_ID=5
+API_BASE_URL=http://adminpanel-back:8080/api/BotFeedback
 ```
 
 `THREAD_ID` is optional — use it if your operator group has topics enabled.
+`API_BASE_URL` is optional — if omitted, the default internal Docker URL is used.
 
 ### Run locally
 
 ```bash
 npm install
-npx ts-node src/index.ts
+npm run dev
 ```
 
 ### Run with Docker Compose

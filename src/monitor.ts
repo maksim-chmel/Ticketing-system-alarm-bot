@@ -1,47 +1,83 @@
 import { Telegraf } from 'telegraf';
 import axios from 'axios';
+import { config } from './config';
 
-const API_BASE = 'http://adminpanel-back:8080/api/BotFeedback';
+interface Feedback {
+    id: number;
+    phone?: string | null;
+    username?: string | null;
+    comment?: string | null;
+    date?: string | null;
+}
+
+function escapeMarkdown(value: string): string {
+    return value.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+}
+
+function formatFeedbackTime(date?: string | null): string {
+    if (!date) {
+        return 'Just now';
+    }
+
+    return new Date(date).toLocaleString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        day: '2-digit',
+        month: 'short'
+    });
+}
+
+function buildFeedbackMessage(feedback: Feedback): string {
+    const username = feedback.username ? `@${feedback.username}` : 'unknown';
+    const comment = feedback.comment?.trim() || 'No comment provided';
+
+    return `🆕 *New Feedback #${feedback.id}*\n` +
+        `📅 Time: \`${escapeMarkdown(formatFeedbackTime(feedback.date))}\`\n` +
+        `📱 Phone: \`${escapeMarkdown(feedback.phone || 'N/A')}\`\n` +
+        `👤 User: ${escapeMarkdown(username)}\n` +
+        `💬 Comment: ${escapeMarkdown(comment)}`;
+}
 
 export async function monitorNewFeedbacks(bot: Telegraf) {
-    console.log('✅ API Monitoring started');
+    console.log('API monitoring started');
+    let isPolling = false;
 
     setInterval(async () => {
+        if (isPolling) {
+            console.warn('Skipping poll because previous cycle is still running');
+            return;
+        }
+
+        isPolling = true;
+
         try {
-            const response = await axios.get(`${API_BASE}/unnotified-feedbacks`);
+            const response = await axios.get<Feedback[]>(
+                `${config.apiBaseUrl}/unnotified-feedbacks`,
+                { timeout: 10000 }
+            );
             const feedbacks = response.data;
 
-            if (!feedbacks || feedbacks.length === 0) return;
+            if (!Array.isArray(feedbacks) || feedbacks.length === 0) {
+                return;
+            }
 
-            for (const fb of feedbacks) {
-                // Преобразуем дату из строки в объект Date и форматируем
-                const feedbackTime = fb.date ? new Date(fb.date).toLocaleString('en-GB', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    day: '2-digit',
-                    month: 'short'
-                }) : 'Just now';
-
-                // Формируем сообщение на английском
-                const msg = `🆕 *New Feedback #${fb.id}*\n` +
-                    `📅 Time: \`${feedbackTime}\`\n` +
-                    `📱 Phone: \`${fb.phone || 'N/A'}\`\n` +
-                    `👤 User: @${fb.username || 'unknown'}\n` +
-                    `💬 Comment: ${fb.comment}`;
-
+            for (const feedback of feedbacks) {
                 await bot.telegram.sendMessage(
-                    Number(process.env.OPERATOR_CHAT_ID),
-                    msg,
+                    config.operatorChatId,
+                    buildFeedbackMessage(feedback),
                     {
                         parse_mode: 'Markdown',
-                        message_thread_id: process.env.THREAD_ID ? Number(process.env.THREAD_ID) : undefined
+                        message_thread_id: config.threadId
                     }
                 );
 
-                console.log(`[Alarm] Notification for feedback #${fb.id} sent to operator.`);
+                console.log(`Notification for feedback #${feedback.id} sent to operator`);
             }
-        } catch (err: any) {
-            console.error('[Monitor API] ❌ Error:', err.message);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown monitor error';
+            console.error(`Monitor API error: ${message}`);
+        } finally {
+            isPolling = false;
         }
-    }, 15000);
+    }, config.pollIntervalMs);
 }
