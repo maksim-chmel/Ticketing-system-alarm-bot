@@ -1,5 +1,16 @@
-const DEFAULT_API_BASE_URL = 'http://adminpanel-back:8080/api/BotFeedback';
+const DEFAULT_API_BASE_URL = 'http://adminpanel-back:8080/api';
 const DEFAULT_POLL_INTERVAL_MS = 15000;
+
+function readOptionalBoolean(name: string): boolean | undefined {
+    const value = process.env[name];
+    if (!value) return undefined;
+
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) return false;
+
+    throw new Error(`Environment variable ${name} must be a boolean (true/false)`);
+}
 
 function readRequiredNumber(name: string): number {
     const value = process.env[name];
@@ -48,5 +59,6 @@ export const config = {
     botToken: readBotToken(),
     operatorChatId: readRequiredNumber('OPERATOR_CHAT_ID'),
     pollIntervalMs: DEFAULT_POLL_INTERVAL_MS,
-    threadId: readOptionalNumber('THREAD_ID')
+    threadId: readOptionalNumber('THREAD_ID'),
+    enableBroadcastPolling: readOptionalBoolean('ENABLE_BROADCAST_POLLING') ?? true
 };

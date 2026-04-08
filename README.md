@@ -35,7 +35,7 @@ REST API
 Every 15 seconds the bot queries the backend API for tickets that have not yet been notified to the operator group. For each new ticket it sends a formatted message to the configured Telegram chat or topic.
 
 ```
-GET /api/BotFeedback/unnotified-feedbacks
+POST /api/operator/unnotified-feedback-pulls
   → send to operator chat
 ```
 
@@ -89,11 +89,13 @@ Create a `.env` file:
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 OPERATOR_CHAT_ID=-1001234567890
 THREAD_ID=5
-API_BASE_URL=http://adminpanel-back:8080/api/BotFeedback
+API_BASE_URL=http://adminpanel-back:8080/api
+ENABLE_BROADCAST_POLLING=true
 ```
 
 `THREAD_ID` is optional — use it if your operator group has topics enabled.
 `API_BASE_URL` is optional — if omitted, the default internal Docker URL is used.
+`ENABLE_BROADCAST_POLLING` is optional — enable/disable polling for broadcast messages (default: true).
 
 ### Run locally
 
