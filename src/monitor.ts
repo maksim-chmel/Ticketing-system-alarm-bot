@@ -1,6 +1,6 @@
 import { Telegraf } from 'telegraf';
-import axios from 'axios';
 import { config } from './config';
+import { AdminPanelApi, FeedbackDto } from './adminPanelApi';
 
 interface Feedback {
     id: number;
@@ -8,6 +8,16 @@ interface Feedback {
     username?: string | null;
     comment?: string | null;
     date?: string | null;
+}
+
+function mapFeedbackDto(dto: FeedbackDto): Feedback {
+    return {
+        id: dto.id,
+        phone: dto.phone ?? null,
+        username: dto.username ?? null,
+        comment: dto.comment ?? null,
+        date: dto.date ?? dto.createdDate ?? null
+    };
 }
 
 function escapeMarkdown(value: string): string {
@@ -41,6 +51,7 @@ function buildFeedbackMessage(feedback: Feedback): string {
 export async function monitorNewFeedbacks(bot: Telegraf) {
     console.log('API monitoring started');
     let isPolling = false;
+    const api = new AdminPanelApi(config.apiBaseUrl);
 
     setInterval(async () => {
         if (isPolling) {
@@ -51,11 +62,8 @@ export async function monitorNewFeedbacks(bot: Telegraf) {
         isPolling = true;
 
         try {
-            const response = await axios.get<Feedback[]>(
-                `${config.apiBaseUrl}/unnotified-feedbacks`,
-                { timeout: 10000 }
-            );
-            const feedbacks = response.data;
+            const feedbackDtos = await api.pullUnnotifiedFeedbacks();
+            const feedbacks = feedbackDtos.map(mapFeedbackDto);
 
             if (!Array.isArray(feedbacks) || feedbacks.length === 0) {
                 return;
