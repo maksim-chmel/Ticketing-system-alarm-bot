@@ -1,4 +1,4 @@
-# Ticketing-system-alarm-bot
+# Ticketing-system-alarm-bot [![AlarmBot CI/CD](https://github.com/maksim-chmel/Ticketing-system-alarm-bot/actions/workflows/deploy.yml/badge.svg)](https://github.com/maksim-chmel/Ticketing-system-alarm-bot/actions/workflows/deploy.yml)
 
 Telegram bot that polls the backend API for new support tickets and notifies operators in real time. Part of a four-component platform; see [System Overview](#system-overview) below.
 
