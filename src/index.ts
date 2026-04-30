@@ -4,7 +4,7 @@ dotenv.config();
 
 import { Telegraf } from 'telegraf';
 import { config } from './config';
-import { monitorNewFeedbacks } from './monitor';
+import { monitorBroadcasts, monitorNewFeedbacks } from './monitor';
 
 let bot: Telegraf;
 
@@ -21,6 +21,12 @@ bot.start((ctx) => ctx.reply('🤖 Bot online'));
 monitorNewFeedbacks(bot)
     .then(() => console.log('Bot monitoring started'))
     .catch((error) => console.error('Failed to start monitor:', error));
+
+if (config.enableBroadcastPolling) {
+    monitorBroadcasts(bot)
+        .then(() => console.log('Broadcast monitoring started'))
+        .catch((error) => console.error('Failed to start broadcast monitor:', error));
+}
 
 
 bot.launch().then(() => console.log('Bot is ready'));

@@ -1,6 +1,6 @@
 import { Telegraf } from 'telegraf';
 import { config } from './config';
-import { AdminPanelApi, FeedbackDto } from './adminPanelApi';
+import { AdminPanelApi, BroadcastMessage, FeedbackDto } from './adminPanelApi';
 
 interface Feedback {
     id: number;
@@ -48,10 +48,55 @@ function buildFeedbackMessage(feedback: Feedback): string {
         `💬 Comment: ${escapeMarkdown(comment)}`;
 }
 
+function buildBroadcastMessage(msg: BroadcastMessage): string {
+    return `📢 *Broadcast*\n${escapeMarkdown(msg.message)}`;
+}
+
+export async function monitorBroadcasts(bot: Telegraf) {
+    console.log('Broadcast monitoring started');
+    let isPolling = false;
+    const api = new AdminPanelApi(config.apiBaseUrl, config.apiKey);
+
+    setInterval(async () => {
+        if (isPolling) {
+            console.warn('Skipping broadcast poll because previous cycle is still running');
+            return;
+        }
+
+        isPolling = true;
+
+        try {
+            const messages = await api.pullBroadcastMessages();
+
+            if (!Array.isArray(messages) || messages.length === 0) {
+                return;
+            }
+
+            for (const msg of messages) {
+                await bot.telegram.sendMessage(
+                    config.operatorChatId,
+                    buildBroadcastMessage(msg),
+                    {
+                        parse_mode: 'Markdown',
+                        message_thread_id: config.threadId
+                    }
+                );
+
+                console.log(`Broadcast message #${msg.id} sent to operator`);
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown monitor error';
+            console.error(`Broadcast monitor API error: ${message}`);
+        } finally {
+            isPolling = false;
+        }
+    }, config.pollIntervalMs);
+}
+
 export async function monitorNewFeedbacks(bot: Telegraf) {
     console.log('API monitoring started');
     let isPolling = false;
-    const api = new AdminPanelApi(config.apiBaseUrl);
+    const api = new AdminPanelApi(config.apiBaseUrl, config.apiKey);
 
     setInterval(async () => {
         if (isPolling) {

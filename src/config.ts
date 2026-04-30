@@ -54,8 +54,17 @@ function readBotToken(): string {
     return token;
 }
 
+function readRequiredString(name: string): string {
+    const value = process.env[name];
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${name}`);
+    }
+    return value;
+}
+
 export const config = {
     apiBaseUrl: process.env.API_BASE_URL ?? DEFAULT_API_BASE_URL,
+    apiKey: readRequiredString('API_KEY'),
     botToken: readBotToken(),
     operatorChatId: readRequiredNumber('OPERATOR_CHAT_ID'),
     pollIntervalMs: DEFAULT_POLL_INTERVAL_MS,

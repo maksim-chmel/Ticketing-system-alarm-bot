@@ -33,10 +33,11 @@ export class AdminPanelApi {
     private readonly userCache = new Map<number, { user: UserDto; expiresAt: number }>();
     private readonly userCacheTtlMs = 5 * 60 * 1000;
 
-    constructor(baseUrl: string) {
+    constructor(baseUrl: string, apiKey: string) {
         this.http = axios.create({
             baseURL: baseUrl.replace(/\/+$/, ''),
-            timeout: 10000
+            timeout: 10000,
+            headers: { 'X-Api-Key': apiKey }
         });
     }
 
